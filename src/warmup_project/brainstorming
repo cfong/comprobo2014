@@ -1,0 +1,59 @@
+CompRobo: Warmup project
+General notes 
+
+Wall-following:
+Goals:
+- Robot should move forward while aligning parallel to wall
+- Allow user to specify distance between robot and wall (optional)
+- Handle 90 degree turns away gracefully (optional)
+	- Either continue across gap or continue to follow wall
+
+Approach:
+- Laser rangefinder should return roughly uniform values from side of robot closest to wall (ie: robot side should be parallel)
+- So, take rangefinder values from that side of the robot
+- Filter presumably broken values (too high or too low) -- basically coerce to range, or throw out error numbers
+- Average values in small chunks as further filtering (Optional?)  
+- Turn in direction of higher range values, using the difference in values to proportional-control the turn 
+- When values are within a certain range, go straight
+
+Edge cases:
+- When robot is perpendicular to wall -- handle with finite state control? (eg: turn left or right, go into wall-following mode?)
+- Curved walls
+- Wall turns away -- robot turning toward lower values may work if coercing to valid range
+- Wall turns towards (90 degrees) -- could handle separately (eg: case structure), but that's sloppy -- finite state control? (if currently wall following and see something perpendicular in front, turn in direction that you aren't using currently to follow?)  But how does that interact with obstacle avoidance?  
+- Corridors (walls on both sides)
+
+Sensing:
+- Under this construction, robot is always taking front rangefinder data (to check for state changes), left and right side rangefinder data (to align with wall)
+
+
+Notes: 
+- msg.ranges[0] = front
+  msg.ranges[90] = left
+  msg.ranges[180] = back
+  msg.ranges[270] = right
+
+  Assume 45 degrees from center covers each side?
+
+ Quadrant based system?  We can detect a wall to the right if we have a continuous range of values in the 270+/-45 angle region.  Similarly, one to the left in the 90+/-45 degree range, and one in front in the 0+/-45 degree range.  
+ - What consists of a continuous range of values?  -- if there aren't any major gaps in scan data, and the slope of all of the data (last-first)/all is approximately the same as the slope of any (large enough) segment of that data
+ 	- Can't deal with sloped walls?
+--------------------------------
+
+Obstacle avoidance:
+Goals:
+- Move forward while reactively avoiding obstacles that block the robot's path -- think of forwards as attraction and obstacles as repellant
+- Allow goal to be specified in robot's odometry oordinate frame (optional) -- either listen to \odom or use coordinate transforms?
+
+--------------------------------
+
+Person following (or Neato following):
+Goals:
+- Neato will follow person while maintaining specified distance
+- Follow only moving objects (optional)
+
+-----------------
+
+Finite state control:
+- Combine multiple behaviors using state machine setup
+- Maybe use ROS smach package?  (or, just case/if/logic statements)

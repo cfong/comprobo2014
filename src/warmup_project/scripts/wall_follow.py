@@ -15,9 +15,9 @@ dist_to_wall = -1.0
 def approach_wall(msg):
 	"""Approach wall, ending at specified target distance"""
 	global target_dist, dist_to_wall
-	global pub
+	global front_scan
 	
-	front_scan = [msg.ranges[x] for x in range(5) if range_is_valid(msg.ranges[x])]
+	pub = [msg.ranges[x] for x in range(5) if range_is_valid(msg.ranges[x])]
 
 	print dist_to_wall
 	if len(temp) > 0:
@@ -69,7 +69,7 @@ def wall_nearby(msg):
 
 def follow(wall_dir, msg):
 	"""Implement wall-following behavior (parallel to wall) for specified wall direction"""
-	global pub
+	global pub, aligned_to_wall
 
 	base_turn_speed = 1
 	tol = 1.5e-2
@@ -78,8 +78,6 @@ def follow(wall_dir, msg):
 	scan_ranges = {
 		'LEFT': (range(45, 60), range(120, 135)),
 		'RIGHT': (range(225, 230), range(310, 315)),
-		'FRONT': (range(315, 320), range(40, 45)),
-		'BACK': (range(135, 140), range(220, 225))
 	}
 
 	# Looks at scans from side closest to specified wall direction and calculates difference in scans +/- 45 degrees from presumed center
@@ -87,6 +85,11 @@ def follow(wall_dir, msg):
 	side_back = [msg.ranges[x] for x in scan_ranges[wall_dir][1] if range_is_valid(msg.ranges[x])]	
 	print('********* SIDE FRONT', side_front, '********')
 	print('********* SIDE BACK', side_back, '********')
+
+	if len(side_front) == 0 or len(side_back) == 0:
+		aligned_to_wall = 'Not aligned'
+		return
+	
 	side_dif = (sum(side_front)/len(side_front)) - (sum(side_back)/len(side_back))
 
 	# If difference in sides is below tolerance, go forward.  Elsewise, turn in logical direction

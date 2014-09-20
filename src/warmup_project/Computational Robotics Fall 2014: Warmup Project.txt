@@ -1,0 +1,139 @@
+Computational Robotics Fall 2014: Warmup Project
+
+Author: cfong
+Date: 9/19/14
+Time spent: ~15 hours
+
+TABLE OF CONTENTS:
+	1. Behavior implementation
+		a. Wall-following
+		b. Wall-seeking
+		c. Obstacle avoidance
+	2. Finite-state control implementation
+	3. Challenges faced
+	4. Future improvements
+	5. Applications to future robotics projects 
+
+
+BEHAVIOR IMPLEMENTATION
+=======================
+Wall-following
+--------------
+Wall-following was the first behavior that I implemented, with the following goals:
+	- Robot should move forward while aligning parallel to wall 
+	- Allow user to specify distance between robot and wall (optional)
+	- Handle 90 degree turns away gracefully (optional)
+		- Either continue across gap or continue to follow wall  
+
+Of these, I was only able to sucessfully implement and test the first. The remaining goals, and my potential approaches, will be addressed in the "Future improvements" section.
+
+My strategy for wall-following was:
+
+	1. Identify (or previously know) what side of the robot should be aligned to the wall
+
+	2. Take laserscan range values from that side.  You need to collect at least two, from equal angles from the sensor (eg, 270 +/- 45 degres for the right side). This is because when the robot is parallel to the wall, you expect distance taken from +/- angles to be equal.
+
+	3. If taking multiple values (which I was), filter and then average them to reduce error.
+
+	4. Take the difference between the two averaged values (in my case, side_front and side_back)
+
+	5. Turn in the direction of the higher (further) range values, using the difference between values to drive proportional control of angular velocity
+
+	6. If the difference is within a small tolerance, drive forwards. 
+
+
+Wall-seeking
+------------
+Wall-seeking was the second behavior that I implemented, to complement the wall-following behavior. Elkan assisted with the logic in this implementation.  It had the following goals:
+	- When not following a wall, with a wall in observable range (~7m?), the robot should autonomously navigate to said wall
+	- Robot should orient itself in the most efficient direction to prepare for wall-following
+
+My strategy for wall-seeking was:
+
+	1. Collect scan data for all 360 degrees. Find the minimum valid value in this list, and assume that it is the shortest line to the nearest wall. Note both the distance value and angle of this scan. Treat this distance value as one leg of a triangle.
+
+	2. Construct a second line 5 degrees from the minimum scan line. Use trigonometry (tangent) to determine the second leg of the triangle (90 degrees from the first left). Take the distance value of this second scan to be the hypotenuse of the triangle.
+
+	3. Use the properties of right triangles (A^2 + B^2 = C^2) to check whether a valid right triangle was formed.
+
+	4. If a valid right triangle was formed, rotate the robot so that its side is parallel to the wall. If the initial angle (from step 1) was below 180 degrees, align the left side to the wall as it is closer. Otherwise, align the right side.
+
+
+Obstacle avoidance
+------------------
+(My obstacle avoidance implementation is somewhat incomplete and not fully successful.  I ran out of time.) Goals for this behavior were:
+	- Move forward while reactively avoiding obstacles that block the robot's path
+	- Allow goals to be specified in robot's odometry frame (optional)
+
+My strategy for obstacle-avoidance was:
+
+	1. Assume a default continuous forward motion
+
+	2. Collect scan data directly in front of the robot
+
+	3. Filter and average scan data to reduce error
+
+	4. If there is stuff within one meter of the front of the robot (as indicated by averaged data), stop moving forward 
+
+	5. Scan the front-left and front-right 'corners' of the robot, to determine if there are obstacles in way of turning
+
+	6. Turn in the direction of whichever side is less obstructed (has greater distance readings)
+
+
+FINITE STATE CONTROL IMPLEMENTATION
+===================================
+Finite state control was implemented for the wall-finding and wall-following behaviors. I did not implement it with the obstacle avoidance, because I did not get that behavior working successfully by the end of this project. (This is why wall-following and obstacle avoidance are currently in separate files, for debugging purposes.)
+
+I controlled the wall-finding and wall-following states through a global variable tag 'aligned_to_wall' (default: 'Not aligned'). While aligned_to_wall = 'Not aligned', my scan_recieved function executes the wall-finding function (wall_nearby(msg)). Once a wall is found and the robot is aligned, that function sets aligned_to_wall = 'LEFT' or 'RIGHT', indicating which side its aligned on.  
+
+When aligned_to_wall != 'Not aligned', scan_recieved executes the follow() function, which takes 'LEFT' or 'RIGHT' as guidance for how to stay oriented.  
+
+Although wall-finding and wall-following could likely be combined into one function or approach, I chose to keep them separate states because I found my wall-following approach to be more accurate and faster than wall-finding after orienting. It also had the advantage of looking at a slightly wider set of range data, with some averaging, than the wall-finding approach did.
+
+Ideally (or, if I had more time), I would be using classes and class/instance variables instead of globals like this.  Or, possibly smach (but I haven't investigated deeply enough to know).
+
+
+CHALLENGES FACED
+================
+Hardware
+--------
+I had a fair bit of difficulty interfacing with the Neato robots for this project. I tended to experience a lot of lag while connected to the physical robots (500+ ms), which made testing difficult as the robot reacted to commands and sensor data at such a belated rate.  Occasionally, I would get a lot of junk laserscan data. I largely side-stepped these by working predominantly on the simulator, but this comes with its own disadvantages (eg., slightly different physics). It also took me 3+ hours of attempting to connect with the physical robots before I gave up and turned to the simulator. As of this writing, I was not able to test all of my code on the physical robots.       
+
+Software
+--------
+I'm more out of practice with Python than I anticipated.
+
+More specifically, I faced a lot of challenges with how I chose to implement the wall-finding and obstacle avoidance behaviors. I had difficulty locating the wall with respect to the robot, especially because since not all sensor data was accurate or consistent.  As discussed above, I worked around this by checking to see if the data is in a valid range and either removing or replacing it if it isn't. The basic trigonometry that I used to find the wall was much more a challenge than it really should have been, but that's just because I've personally forgotten all of my math.  
+
+I also had some challenges within the catkin workspace, just getting packages to be recognized and code to execute. I have since figured out what I was doing wrong.
+
+
+FUTURE IMPROVEMENTS 
+===================
+There are so many things that I would like to change and/or add in the future.  For starters, I would really like to restructure my code to be class-based instead of the mess of functions and global variables that it currently is. There would probably be a Robot class that dealt with position, velocities, etc; a LaserScan class that dealt with all of the scan msg processing; and other assorted classes as they became relevant.
+
+I would also like to implement some of the optional goals (eg, specify distance from wall). I can think of a couple of potential approaches to this problem:
+
+	1. Instead of aligning side of robot to wall after finding it, align the front of the robot instead. Then move forward under P(ID) control until at the specified distance from the wall. Once that distance is reached, rotate so that the side of the robot is aligned to the wall and transfer to wall-following state.
+
+	2. After aligning side of robot to wall, add an additional angular velocity to the forward motion to produce a curved path. Adjust the angular velocity magnitude based on difference between current distance and desired distance. Once current distance = desired distance, angular velocity will go to 0, leaving only forward motion.
+
+	3. Imagine a circle with its origin at the robot, that is tangent to the desired path (ie, parallel to wall and some distance from it). Follow this arc as a path, until the tangent point -- possibly with odometry?  
+
+In the future, I would like to completely rewrite my obstacle avoidance code so that it is actually functional.  A couple of potential approaches are below:
+
+	1. Attribute 'repelling forces' to all obstacles/walls/laserscan ranges.  Magnitude of these forces could be inversely proportional to the distance returned, and their direction of course to the angle of that scan. Getting the final resultant of these repelling forces and the desired direction could yield the path to travel.
+
+	2. A more sophisticated version of my current implementation, where the robot continuously scans ahead of it and moves in the direction of the fewest points scanned/returned.
+
+	3. Path pre-planning algorithms (eg, A*) could be implemented if we assume that obstacles will not be moving -- or that moving things are people/trackable objects instead
+
+This whole code could also be improved by better tuning of the proportional control (and/or the inclusion of integral or derivative components). I would also like to look into the smach package for state-control implementation.        
+
+
+APPLICATIONS TO FUTURE ROBOTICS PROJECTS
+========================================
+Wall-following and obstacle-avoidance behaviors are applicable to basically any robotic project that requires some form of navigation, so it was very valuable to explore those in this warmup project. I found the trig-based method of wall-finding that I implemented to be particularly interesting, because it's a good simple and quick check for linearity of an object. The conceptualization of obstacles as repelling forces was also interesting; although I did not get to implementing it, it is something that I would enjoy exploring further and that I think would be useful. 
+
+
+

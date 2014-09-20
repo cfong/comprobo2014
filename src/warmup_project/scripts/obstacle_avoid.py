@@ -43,10 +43,6 @@ def scan_recieved(msg):
 			pub.publish(Twist(angular=Vector2(z=-0.2)))
 
 
-
-
-
-
 def test():
 	"""Main run loop for testing."""
 	global pub

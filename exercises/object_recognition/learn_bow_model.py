@@ -1,8 +1,12 @@
 from pickle import load
 import sklearn
 import numpy as np
+<<<<<<< HEAD
 from random import choice
 # from numpy.random import choice
+=======
+from random import sample
+>>>>>>> upstream/master
 import pdb
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -16,7 +20,7 @@ descriptors = load(f)
 f.close()
 
 X = np.zeros((0,128))
-y = np.zeros((0,1))
+y = np.zeros((0,))
 
 categories = descriptors.keys()
 total_descriptors = 0
@@ -33,13 +37,17 @@ for i in range(len(categories)):
 		X[curr:curr+data.shape[0]] = data
 		curr += data.shape[0]
 
+<<<<<<< HEAD
 fit_X = X[choice(range(total_descriptors),10000),:]
+=======
+fit_X = X[sample(range(total_descriptors),10000),:]
+>>>>>>> upstream/master
 clusters = KMeans(n_clusters=k)
 clusters.fit(fit_X)
 
 curr = 0
 X_transformed = np.zeros((total_samples,k))
-y = np.zeros((total_samples,1))
+y = np.zeros((total_samples,))
 for i in range(len(categories)):
 	for data in descriptors[categories[i]]:
 		assignments = clusters.predict(data)
@@ -48,10 +56,9 @@ for i in range(len(categories)):
 		y[curr] = i
 		curr += 1
 
-y = np.ravel(y)
 skf = StratifiedKFold(y,5)
 for train, test in skf:
 	# I found this parameter value to work well, but you may want to try others or use a grid search
 	model = LogisticRegression(C=10**3)
-	model.fit(X_transformed[train,:],y[train,:])
-	print model.score(X_transformed[test,:],y[test,:])
+	model.fit(X_transformed[train,:],y[train])
+	print model.score(X_transformed[test,:],y[test])

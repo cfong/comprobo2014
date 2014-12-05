@@ -1,7 +1,8 @@
 from pickle import load
 import sklearn
 import numpy as np
-from numpy.random import choice
+from random import choice
+# from numpy.random import choice
 import pdb
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -32,7 +33,7 @@ for i in range(len(categories)):
 		X[curr:curr+data.shape[0]] = data
 		curr += data.shape[0]
 
-fit_X = X[np.random.choice(range(total_descriptors),10000),:]
+fit_X = X[choice(range(total_descriptors),10000),:]
 clusters = KMeans(n_clusters=k)
 clusters.fit(fit_X)
 

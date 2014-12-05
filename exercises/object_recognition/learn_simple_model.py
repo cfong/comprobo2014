@@ -27,7 +27,7 @@ for train, test in skf:
 	Xtest = X[test,:]
 	ytest = y[test,:]
 	# try out different classifiers and parameter values if you'd like
-	model = LogisticRegression(C=1)
+	model = LogisticRegression(C=10)
 	model.fit(X[train,:],y[train,:])
 	print model.score(X[test,:],y[test,:])
 	for i in range(len(categories)):
